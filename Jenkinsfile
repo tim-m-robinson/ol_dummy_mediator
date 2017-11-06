@@ -1,7 +1,8 @@
 node {
     stage('Prep') {
         deleteDir()
-        git url: 'https://github.com/tim-m-robinson/ol_dummy_mediator'
+        //git url: 'https://github.com/tim-m-robinson/ol_dummy_mediator'
+        checkout scm
 
         // set BUILD_TIMESTAMP
         def now = new Date()
