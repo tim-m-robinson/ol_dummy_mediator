@@ -22,41 +22,17 @@ node {
                    --group-add ${DOCKER_GID}''') {
 
         stage('Build') {
-          sh 'mvn -B compile'
+          sh 'mvn -B package'
+        }
+
+        stage('Unit Test') {
+          sh 'mvn -B -DBASE_HOST="35.167.222.247" test -P unit-test'
         }
         
         stage('Dependency Check') {
           sh 'mvn -B org.owasp:dependency-check-maven:2.1.0:check'
         }
 
-
-        stage('Package') {
-          sh 'mvn -B package'
-        }
-
-
-        stage('Containerise') {
-          sh "git rev-parse HEAD > build.id"
-          sh 'mvn -B docker:build'
-        }
-    }
-    withDockerContainer(image: 'maven:3-jdk-8',
-      args: '''
-               -v /var/run/docker.sock:/var/run/docker.sock
-                --group-add ${DOCKER_GID}''') { 
-    	 stage('Integration Test') {
-          sh 'mvn -P test -B test'
-        }
-         stage('Unit Test') {
-//         sh 'mvn clean package docker:build'
-//         sh 'mvn -P unit-test -B test'
-        }
-
-    }
-    withDockerContainer(image: 'maven:3-jdk-8',
-          args: '''--network="citools"
-                   -v /var/run/docker.sock:/var/run/docker.sock
-                   --group-add ${DOCKER_GID}''') {
         stage('Sonar Check') {
           withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'sonar',
                         usernameVariable: 'SONAR_USER', passwordVariable: 'SONAR_PASS']]) {
@@ -66,8 +42,29 @@ node {
                 -Dsonar.password=${SONAR_PASS}'''
           }
         }
+
+        stage('Package') {
+          sh 'mvn -B package'
+        }
+
+        stage('Containerise') {
+          sh "git rev-parse HEAD > build.id"
+          sh 'mvn -B docker:build'
+        }
     }
-    
+
+    // Integration Test
+    withDockerContainer(image: 'maven:3-jdk-8',
+      args: '''
+               -v /var/run/docker.sock:/var/run/docker.sock
+                --group-add ${DOCKER_GID}''') {
+
+    	stage('Integration Test') {
+          sh 'mvn -P test -B test'
+        }
+
+    }
+
     stage('Publish WAR') {
         withCredentials([usernameColonPassword(credentialsId: 'nexus', variable: 'USERPASS')]) {
             sh '''curl -v -u ${USERPASS} --upload-file target/dummy-mediation.war \
@@ -79,12 +76,12 @@ node {
         def img = docker.image('dummy-mediation:0.0.1-SNAPSHOT');
 
         docker.withRegistry('http://nexus:80', 'nexus') {
-        sh "git rev-parse HEAD > .git/commit-id"
-        def commit_id = readFile('.git/commit-id').trim()
+            sh "git rev-parse HEAD > .git/commit-id"
+            def commit_id = readFile('.git/commit-id').trim()
 
-        println commit_id
-        img.push();
-        img.push('latest')
-	}
+            println commit_id
+            img.push();
+            img.push('latest')
+	    }
     }
 }

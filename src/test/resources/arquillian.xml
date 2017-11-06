@@ -8,7 +8,8 @@
 
     <container qualifier="unit-test" default="true">
         <configuration>
-            <property name="managementAddress">0.0.0.0</property>
+            <property name="host">${BASE_HOST}</property>
+            <property name="managementAddress">${BASE_HOST}</property>
             <property name="managementPort">9999</property>
             <property name="username">admin</property>
             <property name="password">Passw0rd!</property>
@@ -17,6 +18,8 @@
 
     <extension qualifier="docker">
         <property name="definitionFormat">CUBE</property>
+        <property name="dockerInsideDockerResolution">true</property>
+        <property name="serverUri">tcp://${BASE_HOST}:2375</property>
         <property name="dockerContainers">
             unit-test:
                 buildImage:
@@ -26,7 +29,8 @@
                 await:
                     strategy: sleeping
                     sleepTime: 60 s
-                portBindings: [1090->1080/tcp, 9999/tcp, 8080/tcp]
+                portBindings: [9999/tcp, 8080/tcp]
+                exposedPorts: [1080/tcp]
                 restartPolicy:
                     name: failure
                     maximumRetryCount: 1
@@ -40,7 +44,7 @@
                 await:
                     strategy: sleeping
                     sleepTime: 60 s
-                portBindings: [1080/tcp]
+                #portBindings: [1080/tcp]
                 restartPolicy:
                     name: failure
                     maximumRetryCount: 1
@@ -59,11 +63,16 @@
                 manual: false
         </property>
     </extension>
+
+
     <!-- This enables the Arquillian JaCoCo Extension -->
     <extension qualifier="jacoco"/>
 
     <!-- This enables the Arquillian RestAssured Extension -->
     <extension qualifier="restassured">
+        <!--
+        <property name="baseUri">http://${BASE_HOST}</property>
+        -->
         <property name="port">8080</property>
     </extension>
 
